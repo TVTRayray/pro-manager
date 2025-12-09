@@ -1,0 +1,105 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Light Mode aligned with a light TitleBar */
+    --background: 210 50% 98%;
+    --foreground: 222.2 47.4% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 47.4% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 47.4% 12%;
+
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 94%;
+    --secondary-foreground: 222.2 47.4% 12%;
+
+    --muted: 210 30% 95%;
+    --muted-foreground: 215.4 16.3% 40%;
+
+    --accent: 210 50% 90%;
+    --accent-foreground: 222.2 47.4% 12%;
+
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 210 24% 85%;
+    --input: 210 24% 85%;
+    --ring: 210 40% 70%;
+
+    --radius: 0.5rem;
+
+    /* Sidebar specific */
+    --sidebar-background: 210 50% 98%;
+    --sidebar-foreground: 222.2 47.4% 12%;
+    --sidebar-border: 210 24% 85%;
+  }
+
+  .dark {
+    /* Dark Mode aligned with TitleBar (#1e1e1e background) */
+    --background: 220 4% 12%;
+    /* approx #1E1E1E */
+    --foreground: 210 40% 96%;
+
+    --card: 220 4% 16%;
+    --card-foreground: 210 40% 96%;
+
+    --popover: 220 4% 16%;
+    --popover-foreground: 210 40% 96%;
+
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 220 4% 20%;
+    --secondary-foreground: 210 40% 96%;
+
+    --muted: 220 4% 20%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 220 4% 20%;
+    --accent-foreground: 210 40% 96%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 220 4% 26%;
+    --input: 220 4% 26%;
+    --ring: 220 4% 26%;
+
+    /* Sidebar specific */
+    --sidebar-background: 220 4% 12%;
+    --sidebar-foreground: 210 40% 96%;
+    --sidebar-border: 220 4% 20%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  /* Remove default focus outline from Recharts */
+  .recharts-wrapper {
+    outline: none !important;
+  }
+
+  .dashboard-panel {
+    user-select: none;
+  }
+
+  .dashboard-panel *:focus,
+  .dashboard-panel *:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+}

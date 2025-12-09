@@ -1,0 +1,98 @@
+<!-- REMOVE DOCTYPE FOR SIGN IN WITH APPLE -->
+<!DOCTYPE html>
+<html id="body" lang="en" class="coral coral--medium coral--light">
+  <head>
+    
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0"> 
+    <link rel="icon" href="./favicon.ico">
+
+    <!-- Primary Meta Tags -->
+    <title>Over 5000+ free icons for macOS Monterey, Big Sur & iOS - massive app icon pack</title>
+    <meta name="title" content="Over 5000+ free app & folder icons for macOS Monterey, Big Sur & iOS - massive app & folder icon pack">
+    <meta name="description" content="Free 5000+ macOS app & folder icons in the style of macOS Monterey, Big Sur. Fully open source and community led. How to install custom icons on macOS Monterey, Big Sur.">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://macosicons.com/">
+    <meta property="og:title" content="Over 5000+ free app & folder icons for macOS Monterey, Big Sur & iOS - massive app & folder icon pack">
+    <meta property="og:description" content="Free 5000+ macOS app & folder icons in the style of macOS Monterey, Big Sur. Fully open source and community led. How to install custom app & folder icons on macOS Monterey, Big Sur.">
+    <meta property="og:image" content="https://raw.githubusercontent.com/elrumo/macOS_Big_Sur_icons_replacements/master/icons/Social/low-res/Thumbnail_2021.jpg">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://macosicons.com/">
+    <meta property="twitter:title" content="Over 5000+ free app & folder icons for macOS Monterey, Big Sur & iOS - massive app & folder icon pack">
+    <meta property="twitter:description" content="Free 5000+ macOS app icons in the style of macOS Monterey, Big Sur. Fully open source and community led. How to install custom app & folder icons on macOS Monterey, Big Sur.">
+    <meta property="twitter:image" content="https://raw.githubusercontent.com/elrumo/macOS_Big_Sur_icons_replacements/master/icons/Social/low-res/Thumbnail_2021.jpg">
+    <meta name="twitter:creator" content="@elrumo">
+    <meta name="twitter:site" content="@elrumo">
+    <meta name="author" content="@elrumo">
+
+    <meta 
+      name="theme-color" 
+      content="#F5F5F5"
+      media="(prefers-color-scheme: light)"
+    >
+
+    <meta 
+      name="theme-color" 
+      content="#1A1A1A"
+      media="(prefers-color-scheme: dark)"
+    >
+    
+    <!-- Carbon ads -->
+    <script src="https://m.servedby-buysellads.com/monetization.custom.js" type="86f14ac67580fae11f3b78ec-text/javascript"></script>
+    
+    <!-- Adobe Coral -->
+    <link type="text/css" rel="stylesheet" href="https://unpkg.com/@adobe/coral-spectrum@4.5.0/dist/css/coral.min.css">
+    <!-- <link async type="text/css" rel="stylesheet" href="/coral.min.css"> -->
+    <!-- <link rel="stylesheet" href="dist/style.min.css"> -->
+    <!-- <script src="https://unpkg.com/@adobe/coral-spectrum@4.5.0/dist/js/coral.min.js" data-coral-icons-external="js"></script>  -->
+    
+    <!-- <script async src="/coral.min.js" data-coral-icons-external="js"></script>  -->
+
+
+    <!-- heatmap -->
+    <!-- <script async rel="preconnect">
+      (function(h,e,a,t,m,p) {
+      m=e.createElement(a);m.async=!0;m.src=t;
+      p=e.getElementsByTagName(a)[0];p.parentNode.insertBefore(m,p);
+      })(window,document,'script','https://u.heatmap.it/log.js');
+    </script> -->
+
+    <!-- Clarity -->
+    <script type="86f14ac67580fae11f3b78ec-text/javascript">
+      (function(c,l,a,r,i,t,y){
+          c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+          t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+          y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+      })(window, document, "clarity", "script", "ksdhfng4ft");
+  </script>
+    
+    <!-- Privacy-friendly analytics by Plausible -->
+    <script async src="https://stats.webbites.io/js/pa-S-DBeC2s5KVfBfoYwKXSn.js" type="86f14ac67580fae11f3b78ec-text/javascript"></script>
+    <script type="86f14ac67580fae11f3b78ec-text/javascript">
+      window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+      plausible.init()
+    </script>
+
+    <!-- Instant.page -->
+    <!-- <script async src="//instant.page/5.1.0" type="module" integrity="sha384-by67kQnR+pyfy8yWP4kPO12fHKRLHZPfEsiSXR8u2IKcTdxD805MGUXBzVPnkLHw"></script> -->
+
+    
+    <script async type="86f14ac67580fae11f3b78ec-text/javascript">window.global = window;</script>
+    <script async type="86f14ac67580fae11f3b78ec-module" crossorigin src="./assets/index-b657f07e.js"></script>
+    <link rel="stylesheet" href="./assets/index-44941ddd.css">
+  </head>
+  
+  <body>
+    
+    <noscript>
+      <strong>We're sorry but this app doesn't work properly without JavaScript enabled. Please enable it to continue.</strong>
+    </noscript>
+    <div id="app"></div>
+    
+  <script src="/cdn-cgi/scripts/7d0fa10a/cloudflare-static/rocket-loader.min.js" data-cf-settings="86f14ac67580fae11f3b78ec-|49" defer></script></body>
+</html>
