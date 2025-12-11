@@ -40,6 +40,20 @@ pub async fn set_active_workspace(
 }
 
 #[tauri::command]
+pub async fn rename_workspace(
+    state: State<'_, AppState>,
+    workspace_id: Uuid,
+    new_name: String,
+) -> Result<WorkspaceRecord, AppError> {
+    state.rename_workspace(workspace_id, new_name).await
+}
+
+#[tauri::command]
+pub async fn delete_workspace(state: State<'_, AppState>, workspace_id: Uuid) -> Result<(), AppError> {
+    state.delete_workspace(workspace_id).await
+}
+
+#[tauri::command]
 pub async fn list_projects(
     state: State<'_, AppState>,
     workspace_id: Option<Uuid>,

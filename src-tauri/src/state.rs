@@ -140,6 +140,97 @@ impl AppState {
             .clone())
     }
 
+    pub async fn rename_workspace(&self, id: Uuid, new_name: String) -> AppResult<WorkspaceRecord> {
+        if new_name.trim().is_empty() {
+            return Err(AppError::Validation(
+                "workspace name cannot be empty".to_string(),
+            ));
+        }
+
+        let mut inner = self.inner.write().await;
+        
+        // Check for duplicate names (excluding self)
+        if inner
+            .config
+            .workspaces
+            .iter()
+            .any(|ws| ws.id != id && ws.name.eq_ignore_ascii_case(&new_name))
+        {
+            return Err(AppError::Validation(format!(
+                "workspace name '{}' already exists",
+                new_name
+            )));
+        }
+
+        let updated_record = {
+            let workspace = inner
+                .config
+                .workspaces
+                .iter_mut()
+                .find(|ws| ws.id == id)
+                .ok_or_else(|| AppError::WorkspaceNotFound(id.to_string()))?;
+            
+            workspace.name = new_name.clone();
+            workspace.updated_at = Utc::now();
+            workspace.clone()
+        };
+        
+        inner.persist_config()?;
+        
+        Ok(updated_record)
+    }
+
+    pub async fn delete_workspace(&self, id: Uuid) -> AppResult<()> {
+        let mut inner = self.inner.write().await;
+
+        if inner.config.workspaces.len() <= 1 {
+            return Err(AppError::Validation(
+                "Cannot delete the last workspace".to_string(),
+            ));
+        }
+
+        // Check if exists
+        if !inner.config.workspaces.iter().any(|ws| ws.id == id) {
+            return Err(AppError::WorkspaceNotFound(id.to_string()));
+        }
+
+        // If deleting active workspace, switch to another one first
+        if inner.config.active_workspace_id == Some(id) {
+            let next_workspace = inner
+                .config
+                .workspaces
+                .iter()
+                .find(|ws| ws.id != id)
+                .ok_or_else(|| AppError::Validation("No other workspace found".to_string()))?
+                .id;
+            inner.config.active_workspace_id = Some(next_workspace);
+        }
+
+        // Remove from config
+        if let Some(pos) = inner.config.workspaces.iter().position(|ws| ws.id == id) {
+            inner.config.workspaces.remove(pos);
+        }
+
+        // Remove pool
+        if let Some(pool) = inner.workspace_pools.remove(&id) {
+             pool.close().await;
+        }
+
+        // Persist config first
+        inner.persist_config()?;
+
+        // Delete directory
+        let workspace_dir = inner.base_dir.join("workspaces").join(id.to_string());
+        if workspace_dir.exists() {
+            if let Err(e) = std::fs::remove_dir_all(&workspace_dir) {
+                eprintln!("Failed to remove workspace directory: {}", e);
+                // We don't return error here because the logical deletion succeeded
+            }
+        }
+
+        Ok(())
+    }
+
     pub async fn create_workspace(&self, payload: WorkspaceInput) -> AppResult<WorkspaceRecord> {
         if payload.name.trim().is_empty() {
             return Err(AppError::Validation(

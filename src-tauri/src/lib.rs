@@ -42,6 +42,8 @@ pub fn run() {
             commands::list_workspaces,
             commands::get_active_workspace,
             commands::create_workspace,
+            commands::rename_workspace,
+            commands::delete_workspace,
             commands::set_active_workspace,
             commands::list_projects,
             commands::upsert_project,

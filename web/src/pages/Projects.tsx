@@ -9,7 +9,7 @@ import { useApp } from "../context/AppContext";
 import { ask } from "@tauri-apps/plugin-dialog";
 
 export function Projects() {
-    const { searchQuery, setSearchQuery } = useApp();
+    const { searchQuery, setSearchQuery, workspaceVersion } = useApp();
     const [viewMode, setViewMode] = useState<ViewMode>("grid");
     const [projects, setProjects] = useState<Project[]>([]);
     const [runningProjects, setRunningProjects] = useState<Set<string>>(new Set());
@@ -18,9 +18,11 @@ export function Projects() {
 
     useEffect(() => {
         loadProjects();
-        // Poll for running projects every 2 seconds
+    }, [workspaceVersion]);
+
+    useEffect(() => {
         const interval = setInterval(checkRunningStatus, 2000);
-        checkRunningStatus(); // Initial check
+        checkRunningStatus();
         return () => clearInterval(interval);
     }, []);
 

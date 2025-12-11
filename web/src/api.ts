@@ -27,6 +27,14 @@ export async function setActiveWorkspace(workspaceId: string): Promise<Workspace
   return invoke<Workspace>('set_active_workspace', { workspaceId })
 }
 
+export async function renameWorkspace(workspaceId: string, newName: string): Promise<Workspace> {
+  return invoke<Workspace>('rename_workspace', { workspaceId, newName })
+}
+
+export async function deleteWorkspace(workspaceId: string): Promise<void> {
+  await invoke('delete_workspace', { workspaceId })
+}
+
 export async function fetchProjects(
   workspaceId: string | null = null,
 ): Promise<Project[]> {

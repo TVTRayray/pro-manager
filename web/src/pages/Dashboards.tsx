@@ -7,13 +7,13 @@ import { useApp } from "../context/AppContext";
 import { cn } from "../lib/utils";
 
 export function Dashboards() {
-    const { accentColor } = useApp();
+    const { accentColor, workspaceVersion } = useApp();
     const [stats, setStats] = useState<ActivityStats | null>(null);
     const [chartPeriod, setChartPeriod] = useState<"week" | "month">("month");
 
     useEffect(() => {
         loadStats();
-    }, []);
+    }, [workspaceVersion]);
 
     const loadStats = async () => {
         try {
