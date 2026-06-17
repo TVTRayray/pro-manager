@@ -95,7 +95,7 @@ fn default_accent_color() -> String {
 }
 
 fn default_zoom_level() -> u8 {
-    100
+    90
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

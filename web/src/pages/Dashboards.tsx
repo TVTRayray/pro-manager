@@ -190,12 +190,22 @@ function MetricCard({ icon, title, value, color, bgColor }: { icon: React.ReactN
     )
 }
 
-function CustomChartTooltip({ active, payload, label }: any) {
+type ChartTooltipPayload = {
+    value: number;
+};
+
+type ChartTooltipProps = {
+    active?: boolean;
+    payload?: ChartTooltipPayload[];
+    label?: string;
+};
+
+function CustomChartTooltip({ active, payload, label }: ChartTooltipProps) {
     if (active && payload && payload.length) {
         return (
             <div className="bg-popover border border-border px-2 py-1 rounded shadow-md">
                 <p className="text-[10px] text-popover-foreground">
-                    <span className="font-medium">{new Date(label).toLocaleDateString()}</span>
+                    <span className="font-medium">{new Date(label ?? "").toLocaleDateString()}</span>
                     <span className="mx-1">:</span>
                     <span className="font-bold">{payload[0].value} launches</span>
                 </p>
@@ -205,7 +215,7 @@ function CustomChartTooltip({ active, payload, label }: any) {
     return null;
 }
 
-function CustomProjectTooltip({ active, payload, label }: any) {
+function CustomProjectTooltip({ active, payload, label }: ChartTooltipProps) {
     if (active && payload && payload.length) {
         return (
             <div className="bg-popover border border-border px-2 py-1 rounded shadow-md">

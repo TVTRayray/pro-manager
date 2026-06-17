@@ -103,3 +103,21 @@
     box-shadow: none !important;
   }
 }
+
+@layer utilities {
+  /* Custom Scrollbar */
+  ::-webkit-scrollbar {
+    width: 14px;
+    height: 14px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border hover:bg-muted-foreground/50 transition-colors rounded-full;
+    border: 4px solid transparent;
+    background-clip: content-box;
+  }
+}

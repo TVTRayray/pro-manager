@@ -88,8 +88,8 @@ export function Projects() {
     return (
         <div className="flex-1 flex flex-col h-full bg-background text-foreground transition-colors duration-300">
             {/* Main Content */}
-            <div className="flex-1 overflow-y-auto p-8 space-y-6">
-                <div className="flex items-center justify-between">
+            <div className="flex-1 overflow-y-auto px-6 py-5 lg:px-8 lg:py-6 space-y-5">
+                <div className="flex flex-wrap items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
                         <div className="flex items-center bg-card border border-border rounded-lg p-1">
                             <button
@@ -110,8 +110,8 @@ export function Projects() {
                         </span>
                     </div>
 
-                    <div className="flex items-center gap-4">
-                        <div className="relative w-64">
+                    <div className="flex items-center gap-3">
+                        <div className="relative w-56 lg:w-64">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
                             <input
                                 type="text"
@@ -126,7 +126,7 @@ export function Projects() {
                                 setEditingProject(undefined);
                                 setIsModalOpen(true);
                             }}
-                            className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg transition-all shadow-lg shadow-primary/20 text-sm font-bold"
+                            className="flex items-center gap-2 px-3.5 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg transition-all shadow-lg shadow-primary/20 text-sm font-bold whitespace-nowrap"
                         >
                             <Plus className="w-4 h-4" />
                             New Project
@@ -135,7 +135,7 @@ export function Projects() {
                 </div>
 
                 {viewMode === "grid" ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-5">
                         {filteredProjects.map((project) => (
                             <ProjectCard
                                 key={project.id}

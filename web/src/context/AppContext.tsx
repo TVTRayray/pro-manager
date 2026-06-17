@@ -40,7 +40,8 @@ function hexToHsl(hex: string): string {
 
     const max = Math.max(r, g, b);
     const min = Math.min(r, g, b);
-    let h = 0, s = 0, l = (max + min) / 2;
+    let h = 0, s = 0;
+    const l = (max + min) / 2;
 
     if (max !== min) {
         const d = max - min;
@@ -72,7 +73,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const [zoomLevel, setZoomLevel] = useState(() => {
         const saved = localStorage.getItem("zoomLevel");
-        return saved ? parseInt(saved) : 100;
+        return saved ? parseInt(saved) : 90;
     });
 
     const [launchPresets, setLaunchPresets] = useState<import("../types").LaunchPreset[]>([]);
@@ -111,7 +112,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }, [accentColor]);
 
     useEffect(() => {
-        (document.body.style as any).zoom = `${zoomLevel}%`;
+        document.body.style.zoom = `${zoomLevel}%`;
         localStorage.setItem("zoomLevel", zoomLevel.toString());
     }, [zoomLevel]);
 
@@ -147,6 +148,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useApp() {
     const context = useContext(AppContext);
     if (context === undefined) {

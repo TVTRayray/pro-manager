@@ -16,7 +16,7 @@ const navItems = [
 
 export function Sidebar({ activePage, onNavigate }: SidebarProps) {
     return (
-        <div className="w-64 bg-[hsl(var(--sidebar-background))] border-r border-[hsl(var(--sidebar-border))] h-screen flex flex-col p-4 text-foreground transition-colors duration-300">
+        <div className="w-64 h-full bg-[hsl(var(--sidebar-background))] border-r border-[hsl(var(--sidebar-border))] flex flex-col p-4 text-foreground transition-colors duration-300">
             <WorkspaceSelector />
 
             <div className="space-y-6">

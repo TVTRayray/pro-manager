@@ -5,17 +5,26 @@ import { Minus, Square, X, Copy } from "lucide-react";
 import { useApp } from "../context/AppContext";
 
 export function TitleBar() {
-    const appWindow = Window.getCurrent();
+    // Safely attempt to get the current window (fails in browser context)
+    let appWindow: Window | null = null;
+    try {
+        appWindow = Window.getCurrent();
+    } catch {
+        // console.warn("Running in browser mode, Tauri window API not available.");
+    }
+
     const [isMaximized, setIsMaximized] = useState(false);
     const { theme } = useApp();
 
     useEffect(() => {
+        if (!appWindow) return;
+        
         let unlisten: UnlistenFn | null = null;
-        const syncState = async () => setIsMaximized(await appWindow.isMaximized());
+        const syncState = async () => setIsMaximized(await appWindow!.isMaximized());
         syncState();
 
         (async () => {
-            unlisten = await appWindow.listen("tauri://resize", syncState);
+            unlisten = await appWindow!.listen("tauri://resize", syncState);
         })();
 
         return () => {
@@ -23,13 +32,14 @@ export function TitleBar() {
                 unlisten();
             }
         };
-    }, []);
+    }, [appWindow]);
 
     const minimize = async () => {
-        await appWindow.minimize();
+        await appWindow?.minimize();
     };
 
     const toggleMaximize = async () => {
+        if (!appWindow) return;
         if (await appWindow.isMaximized()) {
             appWindow.unmaximize();
             setIsMaximized(false);
@@ -40,7 +50,7 @@ export function TitleBar() {
     };
 
     const close = async () => {
-        await appWindow.close();
+        await appWindow?.close();
     };
 
     const isDark = theme === "dark";
@@ -48,9 +58,12 @@ export function TitleBar() {
     const textClass = isDark ? "text-gray-300" : "text-gray-800";
     const controlHover = isDark ? "hover:bg-[#333] text-gray-400 hover:text-white" : "hover:bg-[#e5e7eb] text-gray-500 hover:text-gray-900";
 
+    // If in browser (no appWindow), we can either hide the titlebar or show a simplified version.
+    // Showing a simplified version maintains layout consistency.
+    
     return (
         <div
-            data-tauri-drag-region
+            data-tauri-drag-region={!!appWindow}
             className={`h-10 flex items-center justify-between px-3 select-none border-b ${backgroundClass}`}
             onDoubleClick={toggleMaximize}
         >
@@ -66,32 +79,36 @@ export function TitleBar() {
                 Pro Manager
             </div>
 
-            {/* Right: Window Controls */}
+            {/* Right: Window Controls (Only show if in Tauri) */}
             <div className="flex items-center h-full">
-                <button
-                    type="button"
-                    data-tauri-drag-region="false"
-                    onClick={minimize}
-                    className={`h-full w-10 flex items-center justify-center transition-colors ${controlHover}`}
-                >
-                    <Minus className="w-4 h-4" />
-                </button>
-                <button
-                    type="button"
-                    data-tauri-drag-region="false"
-                    onClick={toggleMaximize}
-                    className={`h-full w-10 flex items-center justify-center transition-colors ${controlHover}`}
-                >
-                    {isMaximized ? <Copy className="w-3 h-3" /> : <Square className="w-3 h-3" />}
-                </button>
-                <button
-                    type="button"
-                    data-tauri-drag-region="false"
-                    onClick={close}
-                    className={`h-full w-10 flex items-center justify-center text-gray-400 transition-colors ${isDark ? "hover:bg-red-500 hover:text-white" : "hover:bg-red-200 hover:text-red-700"}`}
-                >
-                    <X className="w-4 h-4" />
-                </button>
+                {appWindow && (
+                    <>
+                        <button
+                            type="button"
+                            data-tauri-drag-region="false"
+                            onClick={minimize}
+                            className={`h-full w-10 flex items-center justify-center transition-colors ${controlHover}`}
+                        >
+                            <Minus className="w-4 h-4" />
+                        </button>
+                        <button
+                            type="button"
+                            data-tauri-drag-region="false"
+                            onClick={toggleMaximize}
+                            className={`h-full w-10 flex items-center justify-center transition-colors ${controlHover}`}
+                        >
+                            {isMaximized ? <Copy className="w-3 h-3" /> : <Square className="w-3 h-3" />}
+                        </button>
+                        <button
+                            type="button"
+                            data-tauri-drag-region="false"
+                            onClick={close}
+                            className={`h-full w-10 flex items-center justify-center text-gray-400 transition-colors ${isDark ? "hover:bg-red-500 hover:text-white" : "hover:bg-red-200 hover:text-red-700"}`}
+                        >
+                            <X className="w-4 h-4" />
+                        </button>
+                    </>
+                )}
             </div>
         </div>
     );

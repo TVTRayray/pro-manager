@@ -19,6 +19,12 @@ export function ProjectListItem({ project, onLaunch, onEdit, onDelete }: Project
     const Icon = typeIcons[project.openConfig.mode] || Globe;
     const accentStyle = "text-primary bg-primary/10 border-primary/20";
 
+    const getConfigLabel = () => {
+        if (project.openConfig.mode === 'custom_app') return "Custom App";
+        if (project.openConfig.mode === 'custom_command') return "Command";
+        return "System";
+    };
+
     const getExecutableInfo = () => {
         if (project.openConfig.mode === 'custom_app') return project.openConfig.executable;
         if (project.openConfig.mode === 'custom_command') return project.openConfig.command;
@@ -31,23 +37,19 @@ export function ProjectListItem({ project, onLaunch, onEdit, onDelete }: Project
                 <Icon className="w-5 h-5" />
             </div>
 
-            <div className="flex-1 min-w-0 grid grid-cols-12 gap-4 items-center">
-                <div className="col-span-3">
+            <div className="flex-1 min-w-0 grid grid-cols-[minmax(180px,1.5fr)_auto_minmax(120px,0.9fr)] gap-4 items-center">
+                <div className="min-w-0">
                     <h3 className="font-bold text-sm text-foreground truncate" title={project.name}>{project.name}</h3>
-                    <p className="text-xs text-muted-foreground truncate">Created: {new Date(project.createdAt).toLocaleDateString()}</p>
+                    <p className="text-xs text-muted-foreground font-mono truncate mt-0.5" title={project.path}>{project.path}</p>
                 </div>
 
-                <div className="col-span-2">
-                    <span className={cn("text-[10px] font-bold px-2 py-1 rounded-full border transition-colors", accentStyle)}>
-                        {project.openConfig.mode.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                <div className="flex items-center justify-start">
+                    <span className={cn("inline-flex h-7 min-w-[76px] items-center justify-center rounded-full border px-2.5 text-[10px] font-bold uppercase tracking-wide transition-colors whitespace-nowrap", accentStyle)}>
+                        {getConfigLabel()}
                     </span>
                 </div>
 
-                <div className="col-span-4">
-                    <p className="text-xs text-muted-foreground font-mono truncate" title={project.path}>{project.path}</p>
-                </div>
-
-                <div className="col-span-3">
+                <div className="min-w-0">
                     <p className="text-xs text-muted-foreground font-mono truncate" title={getExecutableInfo()}>{getExecutableInfo()}</p>
                 </div>
             </div>

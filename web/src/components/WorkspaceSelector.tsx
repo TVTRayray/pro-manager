@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ChevronDown, Plus, Check, MoreHorizontal, Edit2, Trash2, X } from "lucide-react";
+import { ChevronDown, Plus, Check, Edit2, Trash2, X } from "lucide-react";
 import { fetchWorkspaces, fetchActiveWorkspace, createWorkspace, setActiveWorkspace, renameWorkspace, deleteWorkspace } from "../api";
 import type { Workspace } from "../types";
 import { cn } from "../lib/utils";
