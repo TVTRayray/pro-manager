@@ -3,6 +3,7 @@ import type {
   ActivityStats,
   AppSettings,
   AppSettingsPayload,
+  LaunchPresetInput,
   Project,
   ProjectInput,
   Workspace,
@@ -73,6 +74,18 @@ export async function launchProject(
   })
 }
 
+export async function setProjectFavourite(
+  projectId: string,
+  isFavourite: boolean,
+  workspaceId: string | null = null,
+): Promise<Project> {
+  return invoke<Project>('set_project_favourite', {
+    workspaceId,
+    projectId,
+    isFavourite,
+  })
+}
+
 export async function fetchActivityStats(
   workspaceId: string | null = null,
 ): Promise<ActivityStats> {
@@ -87,6 +100,10 @@ export async function fetchSettings(): Promise<AppSettings> {
 
 export async function updateSettings(payload: AppSettingsPayload): Promise<AppSettings> {
   return invoke<AppSettings>('update_settings', { payload })
+}
+
+export async function detectEditorPresets(): Promise<LaunchPresetInput[]> {
+  return invoke<LaunchPresetInput[]>('detect_editor_presets')
 }
 
 export async function stopProject(projectId: string): Promise<void> {

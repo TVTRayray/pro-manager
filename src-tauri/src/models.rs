@@ -25,12 +25,6 @@ pub struct WorkspaceInput {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct WorkspaceSelection {
-    pub workspace_id: Uuid,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case", tag = "mode")]
 pub enum OpenConfig {
     SystemDefault,
@@ -60,6 +54,7 @@ pub struct Project {
     pub path: PathBuf,
     pub description: Option<String>,
     pub open_config: OpenConfig,
+    pub is_favourite: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -82,6 +77,7 @@ pub struct ProjectRow {
     pub path: String,
     pub description: Option<String>,
     pub open_config: String,
+    pub is_favourite: bool,
     pub created_at: String,
     pub updated_at: String,
 }

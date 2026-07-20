@@ -29,3 +29,6 @@ sqlx = { version = "0.7", default-features = false, features = ["macros", "runti
 tauri = { version = "2.9.2", features = ["tray-icon", "image-png"] }
 tauri-plugin-log = "2"
 tauri-plugin-dialog = "2"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"

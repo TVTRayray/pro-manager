@@ -1,7 +1,8 @@
 import { createContext, useContext, useState, useEffect } from "react";
+import { listen } from "@tauri-apps/api/event";
 import type { ReactNode } from "react";
 import { fetchSettings } from "../api";
-import type { ThemePreference } from "../types";
+import type { AppPage, ThemePreference } from "../types";
 
 interface AppContextType {
     searchQuery: string;
@@ -13,11 +14,11 @@ interface AppContextType {
     zoomLevel: number;
     setZoomLevel: (zoom: number) => void;
     launchPresets: import("../types").LaunchPreset[];
-    activePage: string;
-    setActivePage: (page: string) => void;
+    activePage: AppPage;
+    setActivePage: (page: AppPage) => void;
     activeSettingsTab: "appearance" | "launch";
     setActiveSettingsTab: (tab: "appearance" | "launch") => void;
-    reloadSettings: () => Promise<void>;
+    reloadSettings: (shouldApply?: () => boolean) => Promise<void>;
     workspaceVersion: number;
     notifyWorkspaceChange: () => void;
 }
@@ -77,12 +78,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
 
     const [launchPresets, setLaunchPresets] = useState<import("../types").LaunchPreset[]>([]);
-    const [activePage, setActivePage] = useState("projects");
+    const [activePage, setActivePage] = useState<AppPage>("projects");
     const [activeSettingsTab, setActiveSettingsTab] = useState<"appearance" | "launch">("appearance");
     const [workspaceVersion, setWorkspaceVersion] = useState(0);
 
     useEffect(() => {
         loadSettings();
+    }, []);
+
+    useEffect(() => {
+        const pages: AppPage[] = ["projects", "dashboards", "favourites", "settings"];
+        const unlisten = listen<string>("navigate", ({ payload }) => {
+            if (pages.includes(payload as AppPage)) setActivePage(payload as AppPage);
+        });
+        return () => { void unlisten.then((stop) => stop()); };
     }, []);
 
     useEffect(() => {
@@ -116,9 +125,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         localStorage.setItem("zoomLevel", zoomLevel.toString());
     }, [zoomLevel]);
 
-    const loadSettings = async () => {
+    const loadSettings = async (shouldApply?: () => boolean) => {
         try {
             const settings = await fetchSettings();
+            if (shouldApply && !shouldApply()) return;
             setTheme(settings.theme);
             setAccentColor(settings.accentColor);
             setZoomLevel(settings.zoomLevel);

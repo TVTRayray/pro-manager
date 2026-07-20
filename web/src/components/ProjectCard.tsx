@@ -1,66 +1,53 @@
-import { Play, Settings, Trash2, Folder, Square } from "lucide-react";
+import { Play, Settings, Trash2, Folder, Square, Star } from "lucide-react";
 import { cn } from "../lib/utils";
 import type { Project } from "../types";
-import { useState } from "react";
-import { stopProject } from "../api";
 
 interface ProjectCardProps {
     project: Project;
     isRunning: boolean;
+    isFavouritePending: boolean;
     onLaunch: (project: Project) => void;
+    onStop: (project: Project) => void;
+    onFavourite: (project: Project) => void;
     onEdit: (project: Project) => void;
     onDelete: (project: Project) => void;
 }
 
-export function ProjectCard({ project, isRunning, onLaunch, onEdit, onDelete }: ProjectCardProps) {
+export function ProjectCard({ project, isRunning, isFavouritePending, onLaunch, onStop, onFavourite, onEdit, onDelete }: ProjectCardProps) {
     // Unified accent color style for icon and badge
     const accentStyle = "text-primary bg-primary/10 border-primary/20";
-    const [isStopping, setIsStopping] = useState(false);
-
-    const handleStop = async () => {
-        setIsStopping(true);
-        try {
-            await stopProject(project.id);
-        } catch (error) {
-            console.error("Failed to stop project:", error);
-        } finally {
-            setIsStopping(false);
-        }
-    };
-
     return (
-        <div className="group bg-card/50 backdrop-blur-sm border border-border rounded-xl p-5 hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/5 flex flex-col gap-4 relative overflow-hidden">
-            {/* Glassmorphism gradient blob for light mode */}
-            <div className="absolute -top-10 -right-10 w-32 h-32 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-colors pointer-events-none" />
-
-            <div className="flex items-start justify-between relative z-10">
-                <div className={cn("p-2.5 rounded-lg border transition-colors", accentStyle)}>
+        <article className="group relative flex min-h-48 flex-col gap-3 rounded-xl border border-border bg-card p-4 hover:border-input">
+            <div className="flex items-start justify-between">
+                <div className={cn("rounded-lg border p-2", accentStyle)}>
                     <Folder className="w-5 h-5" />
                 </div>
-                <span className={cn("text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider transition-colors", accentStyle)}>
-                    {project.openConfig.mode.replace('_', ' ')}
-                </span>
+                <div className="flex items-center gap-2">
+                    <span className={cn("rounded border px-2 py-1 text-[10px] font-semibold uppercase tracking-wide", accentStyle)}>{project.openConfig.mode.replace('_', ' ')}</span>
+                    <button onClick={() => onFavourite(project)} disabled={isFavouritePending} aria-label={project.isFavourite ? `Remove ${project.name} from favourites` : `Add ${project.name} to favourites`} aria-pressed={project.isFavourite} className="icon-button disabled:cursor-not-allowed disabled:opacity-50">
+                        <Star className={cn("h-4 w-4", project.isFavourite && "fill-current text-amber-500")} />
+                    </button>
+                </div>
             </div>
 
-            <div className="relative z-10">
-                <h3 className="font-bold text-lg mb-1 text-foreground group-hover:text-primary transition-colors truncate" title={project.name}>{project.name}</h3>
+            <div>
+                <h3 className="mb-1 truncate text-sm font-semibold text-foreground" title={project.name}>{project.name}</h3>
                 <p className="text-xs text-muted-foreground truncate font-mono" title={project.path}>{project.path}</p>
             </div>
 
-            <div className="mt-auto pt-4 flex items-center gap-2 relative z-10">
+            <div className="mt-auto flex items-center gap-2 border-t border-border pt-3">
                 {isRunning ? (
                     <button
-                        onClick={handleStop}
-                        disabled={isStopping}
-                        className="flex-1 bg-destructive text-destructive-foreground h-9 rounded-md text-sm font-bold hover:bg-destructive/90 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-destructive/20 animate-in fade-in"
+                        onClick={() => onStop(project)}
+                        className="flex h-8 flex-1 items-center justify-center gap-2 rounded-md bg-destructive text-xs font-semibold text-destructive-foreground hover:bg-destructive/90"
                     >
                         <Square className="w-3.5 h-3.5 fill-current" />
-                        {isStopping ? "Stopping..." : "Stop"}
+                        Stop
                     </button>
                 ) : (
                     <button
                         onClick={() => onLaunch(project)}
-                        className="flex-1 bg-primary text-primary-foreground h-9 rounded-md text-sm font-bold hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
+                        className="flex h-8 flex-1 items-center justify-center gap-2 rounded-md bg-primary text-xs font-semibold text-primary-foreground hover:bg-primary/90"
                     >
                         <Play className="w-3.5 h-3.5 fill-current" />
                         Launch
@@ -69,17 +56,19 @@ export function ProjectCard({ project, isRunning, onLaunch, onEdit, onDelete }: 
 
                 <button
                     onClick={() => onEdit(project)}
-                    className="h-9 w-9 flex items-center justify-center rounded-md border border-input hover:bg-accent text-muted-foreground transition-colors bg-background/50"
+                    aria-label={`Edit ${project.name}`}
+                    className="icon-button h-8 w-8 border border-input"
                 >
                     <Settings className="w-4 h-4" />
                 </button>
                 <button
                     onClick={() => onDelete(project)}
-                    className="h-9 w-9 flex items-center justify-center rounded-md border border-input hover:bg-destructive/10 hover:text-destructive text-muted-foreground transition-colors bg-background/50"
+                    aria-label={`Delete ${project.name}`}
+                    className="icon-button h-8 w-8 border border-input hover:text-destructive"
                 >
                     <Trash2 className="w-4 h-4" />
                 </button>
             </div>
-        </div>
+        </article>
     );
 }

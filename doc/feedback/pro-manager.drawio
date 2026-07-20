@@ -1,0 +1,34 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="第 1 页" id="bdI6Rm-AJDZQcg7Mmz3e">
+    <mxGraphModel dx="838" dy="725" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="P1TMZQtQyw_c12QbGp-T-1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="30" width="540" x="130" y="210" as="geometry" />
+        </mxCell>
+        <mxCell id="P1TMZQtQyw_c12QbGp-T-3" parent="1" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=none;" value="app menu" vertex="1">
+          <mxGeometry height="20" width="100" x="180" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="P1TMZQtQyw_c12QbGp-T-5" edge="1" parent="1" source="P1TMZQtQyw_c12QbGp-T-3" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="260" y="190" as="sourcePoint" />
+            <mxPoint x="230" y="200" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="P1TMZQtQyw_c12QbGp-T-7" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="370" width="570" x="130" y="310" as="geometry" />
+        </mxCell>
+        <mxCell id="P1TMZQtQyw_c12QbGp-T-8" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="title" vertex="1">
+          <mxGeometry height="20" width="570" x="130" y="310" as="geometry" />
+        </mxCell>
+        <mxCell id="P1TMZQtQyw_c12QbGp-T-12" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Projects/Dashboard&lt;div&gt;/Favourites&lt;/div&gt;" vertex="1">
+          <mxGeometry height="60" width="120" x="130" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="P1TMZQtQyw_c12QbGp-T-13" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="WorkSpace" vertex="1">
+          <mxGeometry height="60" width="120" x="580" y="330" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useRef, useState, useEffect } from "react";
 import { X, Save, Terminal } from "lucide-react";
 import type { LaunchPreset, LaunchPresetInput, OpenConfig } from "../types";
 import { cn } from "../lib/utils";
@@ -18,9 +18,14 @@ export function LaunchPresetModal({ isOpen, onClose, onSubmit, initialData }: La
     const [command, setCommand] = useState("");
     const [args, setArgs] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [error, setError] = useState("");
+    const dialogRef = useRef<HTMLDivElement>(null);
+    const firstControlRef = useRef<HTMLInputElement>(null);
+    const previousFocusRef = useRef<HTMLElement | null>(null);
 
     useEffect(() => {
         if (isOpen) {
+            setError("");
             if (initialData) {
                 setName(initialData.name);
                 setDescription(initialData.description || "");
@@ -43,6 +48,16 @@ export function LaunchPresetModal({ isOpen, onClose, onSubmit, initialData }: La
         }
     }, [isOpen, initialData]);
 
+    useEffect(() => {
+        if (!isOpen) return;
+        previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        const frame = requestAnimationFrame(() => firstControlRef.current?.focus());
+        return () => {
+            cancelAnimationFrame(frame);
+            previousFocusRef.current?.focus();
+        };
+    }, [isOpen]);
+
     const resetForm = () => {
         setName("");
         setDescription("");
@@ -50,11 +65,13 @@ export function LaunchPresetModal({ isOpen, onClose, onSubmit, initialData }: La
         setExecutable("");
         setCommand("");
         setArgs("");
+        setError("");
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
+        setError("");
 
         try {
             let config: OpenConfig;
@@ -80,46 +97,72 @@ export function LaunchPresetModal({ isOpen, onClose, onSubmit, initialData }: La
             onClose();
         } catch (error) {
             console.error("Failed to submit preset:", error);
+            setError(`Could not save preset: ${String(error)}`);
         } finally {
             setIsSubmitting(false);
+        }
+    };
+
+    const handleDialogKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+        if (event.key === "Escape" && !isSubmitting) {
+            event.preventDefault();
+            onClose();
+            return;
+        }
+        if (event.key !== "Tab" || !dialogRef.current) return;
+
+        const controls = [...dialogRef.current.querySelectorAll<HTMLElement>("button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex='-1'])")];
+        const first = controls[0];
+        const last = controls[controls.length - 1];
+        if (!first || !last) return;
+        if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
         }
     };
 
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="w-full max-w-md bg-card border border-border rounded-xl shadow-2xl animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/25 p-3">
+            <div ref={dialogRef} onKeyDown={handleDialogKeyDown} role="dialog" aria-modal="true" aria-labelledby="preset-dialog-title" className="flex max-h-[calc(100vh-1.5rem)] w-full max-w-md flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xl">
                 <div className="flex items-center justify-between p-4 border-b border-border">
-                    <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+                    <h2 id="preset-dialog-title" className="flex items-center gap-2 text-base font-semibold text-foreground">
                         <Terminal className="w-5 h-5 text-primary" />
                         {initialData ? "Edit Preset" : "New Launch Preset"}
                     </h2>
-                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
+                    <button onClick={onClose} disabled={isSubmitting} aria-label="Close launch preset dialog" className="icon-button">
                         <X className="w-5 h-5" />
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-4 space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-4 overflow-y-auto p-4">
+                    {error && <div role="alert" className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">{error}</div>}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-foreground">Preset Name</label>
+                        <label htmlFor="preset-name" className="text-sm font-medium text-foreground">Preset Name</label>
                         <input
+                            id="preset-name"
+                            ref={firstControlRef}
                             type="text"
                             required
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            className="w-full bg-background border border-input rounded-lg px-3 py-2 text-foreground focus:outline-none focus:border-primary transition-colors"
+                            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-foreground"
                             placeholder="e.g., VS Code, Terminal"
                         />
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-foreground">Description (Optional)</label>
+                        <label htmlFor="preset-description" className="text-sm font-medium text-foreground">Description (Optional)</label>
                         <input
+                            id="preset-description"
                             type="text"
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
-                            className="w-full bg-background border border-input rounded-lg px-3 py-2 text-foreground focus:outline-none focus:border-primary transition-colors"
+                            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-foreground"
                             placeholder="Brief description of this preset"
                         />
                     </div>
@@ -132,6 +175,7 @@ export function LaunchPresetModal({ isOpen, onClose, onSubmit, initialData }: La
                                     key={m}
                                     type="button"
                                     onClick={() => setMode(m)}
+                                    aria-pressed={mode === m}
                                     className={cn(
                                         "px-2 py-2 text-xs font-medium rounded-lg border transition-all",
                                         mode === m
@@ -146,41 +190,44 @@ export function LaunchPresetModal({ isOpen, onClose, onSubmit, initialData }: La
                     </div>
 
                     {mode === "custom_app" && (
-                        <div className="space-y-2 animate-in slide-in-from-top-2">
-                            <label className="text-sm font-medium text-foreground">Executable Path</label>
+                        <div className="space-y-2">
+                            <label htmlFor="preset-executable" className="text-sm font-medium text-foreground">Executable Path</label>
                             <input
+                                id="preset-executable"
                                 type="text"
                                 required
                                 value={executable}
                                 onChange={(e) => setExecutable(e.target.value)}
-                                className="w-full bg-background border border-input rounded-lg px-3 py-2 text-foreground focus:outline-none focus:border-primary transition-colors"
+                                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-foreground"
                                 placeholder="C:\Path\To\App.exe"
                             />
                         </div>
                     )}
 
                     {mode === "custom_command" && (
-                        <div className="space-y-2 animate-in slide-in-from-top-2">
-                            <label className="text-sm font-medium text-foreground">Command</label>
+                        <div className="space-y-2">
+                            <label htmlFor="preset-command" className="text-sm font-medium text-foreground">Command</label>
                             <input
+                                id="preset-command"
                                 type="text"
                                 required
                                 value={command}
                                 onChange={(e) => setCommand(e.target.value)}
-                                className="w-full bg-background border border-input rounded-lg px-3 py-2 text-foreground focus:outline-none focus:border-primary transition-colors"
+                                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-foreground"
                                 placeholder="npm, cargo, python"
                             />
                         </div>
                     )}
 
                     {mode !== "system_default" && (
-                        <div className="space-y-2 animate-in slide-in-from-top-2">
-                            <label className="text-sm font-medium text-foreground">Arguments</label>
+                        <div className="space-y-2">
+                            <label htmlFor="preset-arguments" className="text-sm font-medium text-foreground">Arguments</label>
                             <input
+                                id="preset-arguments"
                                 type="text"
                                 value={args}
                                 onChange={(e) => setArgs(e.target.value)}
-                                className="w-full bg-background border border-input rounded-lg px-3 py-2 text-foreground focus:outline-none focus:border-primary transition-colors"
+                                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-foreground"
                                 placeholder="--flag value"
                             />
                         </div>
@@ -190,6 +237,7 @@ export function LaunchPresetModal({ isOpen, onClose, onSubmit, initialData }: La
                         <button
                             type="button"
                             onClick={onClose}
+                            disabled={isSubmitting}
                             className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
                         >
                             Cancel

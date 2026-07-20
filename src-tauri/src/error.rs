@@ -1,4 +1,4 @@
-use std::{fmt, io, path::PathBuf};
+use std::{io, path::PathBuf};
 
 use serde::ser::{Serialize, Serializer};
 use thiserror::Error;

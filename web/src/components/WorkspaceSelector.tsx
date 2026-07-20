@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useRef, useState, useEffect } from "react";
 import { ChevronDown, Plus, Check, Edit2, Trash2, X } from "lucide-react";
 import { fetchWorkspaces, fetchActiveWorkspace, createWorkspace, setActiveWorkspace, renameWorkspace, deleteWorkspace } from "../api";
 import type { Workspace } from "../types";
@@ -12,8 +12,11 @@ export function WorkspaceSelector() {
     const [isOpen, setIsOpen] = useState(false);
     const [isCreating, setIsCreating] = useState(false);
     const [newWorkspaceName, setNewWorkspaceName] = useState("");
+    const [error, setError] = useState("");
+    const [isSwitching, setIsSwitching] = useState(false);
+    const isSwitchingRef = useRef(false);
 
-    const { reloadSettings, notifyWorkspaceChange } = useApp();
+    const { notifyWorkspaceChange } = useApp();
 
     // Rename state
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -31,14 +34,16 @@ export function WorkspaceSelector() {
             ]);
             setWorkspaces(list);
             setActiveWorkspaceState(active);
+            setError("");
         } catch (error) {
             console.error("Failed to load workspaces:", error);
+            setError(`Could not load workspaces: ${String(error)}`);
         }
     };
 
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newWorkspaceName.trim()) return;
+        if (!newWorkspaceName.trim() || isSwitchingRef.current) return;
 
         try {
             const newWs = await createWorkspace({ name: newWorkspaceName, description: "" });
@@ -48,18 +53,25 @@ export function WorkspaceSelector() {
             setIsCreating(false);
         } catch (error) {
             console.error("Failed to create workspace:", error);
+            setError(`Could not create workspace: ${String(error)}`);
         }
     };
 
     const handleSelect = async (workspace: Workspace) => {
+        if (isSwitchingRef.current || workspace.id === activeWorkspace?.id) return;
+        isSwitchingRef.current = true;
+        setIsSwitching(true);
         try {
             await setActiveWorkspace(workspace.id);
             setActiveWorkspaceState(workspace);
             setIsOpen(false);
-            await reloadSettings();
             notifyWorkspaceChange();
         } catch (error) {
             console.error("Failed to set active workspace:", error);
+            setError(`Could not switch workspace: ${String(error)}`);
+        } finally {
+            isSwitchingRef.current = false;
+            setIsSwitching(false);
         }
     };
 
@@ -83,6 +95,7 @@ export function WorkspaceSelector() {
             setEditingId(null);
         } catch (error) {
             console.error("Failed to rename workspace:", error);
+            setError(`Could not rename workspace: ${String(error)}`);
         }
     };
 
@@ -107,47 +120,48 @@ export function WorkspaceSelector() {
                 const isActive = activeWorkspace?.id === ws.id;
                 await loadWorkspaces();
                 if (isActive) {
-                    await reloadSettings();
                     notifyWorkspaceChange();
                 }
             } catch (error) {
                 console.error("Failed to delete workspace:", error);
+                setError(`Could not delete workspace: ${String(error)}`);
             }
         }
     };
 
     return (
-        <div className="relative px-2 mb-6">
+        <div data-tauri-drag-region="false" className="relative w-full min-w-0">
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-accent/50 transition-colors border border-transparent hover:border-border group"
+                aria-expanded={isOpen}
+                aria-haspopup="menu"
+                className="flex h-8 w-full min-w-0 items-center justify-between rounded-md border border-transparent px-2 hover:border-border hover:bg-accent"
             >
                 <div className="flex items-center gap-3 overflow-hidden">
-                    <div className="w-8 h-8 rounded bg-primary flex items-center justify-center shrink-0 shadow-lg shadow-primary/20 transition-all">
-                        <span className="text-sm font-bold text-primary-foreground">
+                    <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-primary">
+                        <span className="text-[10px] font-bold text-primary-foreground">
                             {activeWorkspace?.name.substring(0, 2).toUpperCase() || "WS"}
                         </span>
                     </div>
-                    <div className="flex flex-col items-start overflow-hidden">
-                        <span className="text-sm font-medium text-foreground truncate w-full text-left">
+                    <div className="flex min-w-0 items-center overflow-hidden">
+                        <span className="w-full truncate text-left text-xs font-medium text-foreground">
                             {activeWorkspace?.name || "Select Workspace"}
                         </span>
-                        <span className="text-xs text-muted-foreground truncate">Workspace</span>
                     </div>
                 </div>
                 <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform", isOpen && "rotate-180")} />
             </button>
 
             {isOpen && (
-                <div className="absolute top-full left-2 right-2 mt-2 bg-popover border border-border rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[400px]">
+                <div role="menu" className="absolute right-0 top-full z-50 mt-2 flex max-h-[min(400px,70vh)] w-[min(16rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl border border-border bg-popover shadow-xl">
+                    {error && <div role="alert" className="border-b border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">{error}</div>}
                     <div className="flex-1 overflow-y-auto p-2 space-y-1">
                         {workspaces.map((ws) => (
                             <div
                                 key={ws.id}
-                                onClick={() => !editingId && handleSelect(ws)}
                                 className={cn(
-                                    "w-full flex items-center justify-between p-2 rounded-lg transition-colors group relative",
-                                    editingId === ws.id ? "bg-accent" : "hover:bg-accent cursor-pointer"
+                                    "group relative flex w-full items-center justify-between rounded-lg p-1",
+                                    editingId === ws.id && "bg-accent"
                                 )}
                             >
                                 {editingId === ws.id ? (
@@ -157,32 +171,33 @@ export function WorkspaceSelector() {
                                             type="text"
                                             value={editName}
                                             onChange={(e) => setEditName(e.target.value)}
-                                            className="flex-1 bg-background border border-primary/50 rounded px-2 py-1 text-sm focus:outline-none"
+                                            className="flex-1 rounded border border-primary/50 bg-background px-2 py-1 text-sm"
                                             onKeyDown={e => {
                                                 if (e.key === 'Escape') setEditingId(null);
                                             }}
                                         />
-                                        <button type="submit" className="p-1 hover:bg-primary/20 rounded text-primary">
+                                        <button type="submit" aria-label="Save workspace name" className="p-1 hover:bg-primary/20 rounded text-primary">
                                             <Check className="w-3.5 h-3.5" />
                                         </button>
-                                        <button type="button" onClick={() => setEditingId(null)} className="p-1 hover:bg-destructive/10 rounded text-destructive">
+                                        <button type="button" onClick={() => setEditingId(null)} aria-label="Cancel workspace rename" className="p-1 hover:bg-destructive/10 rounded text-destructive">
                                             <X className="w-3.5 h-3.5" />
                                         </button>
                                     </form>
                                 ) : (
                                     <>
-                                        <div className="flex items-center gap-2 overflow-hidden">
+                                        <button type="button" role="menuitem" onClick={() => void handleSelect(ws)} disabled={isSwitching} className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden rounded-md px-1 py-1 text-left hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50">
                                             <span className={cn("text-sm truncate", activeWorkspace?.id === ws.id ? "text-primary font-medium" : "text-foreground")}>
                                                 {ws.name}
                                             </span>
                                             {activeWorkspace?.id === ws.id && <Check className="w-3 h-3 text-primary shrink-0" />}
-                                        </div>
+                                        </button>
 
-                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <div className="flex items-center gap-1 opacity-60 group-hover:opacity-100 group-focus-within:opacity-100">
                                             <button
                                                 onClick={(e) => startEditing(ws, e)}
                                                 className="p-1.5 rounded-md hover:bg-background text-muted-foreground hover:text-foreground transition-colors"
                                                 title="Rename"
+                                                aria-label={`Rename ${ws.name}`}
                                             >
                                                 <Edit2 className="w-3.5 h-3.5" />
                                             </button>
@@ -190,6 +205,7 @@ export function WorkspaceSelector() {
                                                 onClick={(e) => handleDelete(ws, e)}
                                                 className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
                                                 title="Delete"
+                                                aria-label={`Delete ${ws.name}`}
                                             >
                                                 <Trash2 className="w-3.5 h-3.5" />
                                             </button>
@@ -209,11 +225,12 @@ export function WorkspaceSelector() {
                                     placeholder="Workspace Name"
                                     value={newWorkspaceName}
                                     onChange={(e) => setNewWorkspaceName(e.target.value)}
-                                    className="w-full bg-background border border-input rounded px-2 py-1.5 text-sm text-foreground focus:outline-none focus:border-primary"
+                                    className="w-full rounded border border-input bg-background px-2 py-1.5 text-sm text-foreground"
                                 />
                                 <div className="flex gap-2">
                                     <button
                                         type="submit"
+                                        disabled={isSwitching}
                                         className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-medium py-1.5 rounded transition-colors"
                                     >
                                         Create

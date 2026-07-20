@@ -1,115 +1,71 @@
-import { useState, useEffect } from "react";
-import { Window } from "@tauri-apps/api/window";
+import { useEffect, useState } from "react";
 import type { UnlistenFn } from "@tauri-apps/api/event";
-import { Minus, Square, X, Copy } from "lucide-react";
-import { useApp } from "../context/AppContext";
+import { Window } from "@tauri-apps/api/window";
+import { AppWindow, Copy, Minus, Square, X } from "lucide-react";
+
+const appWindow = (() => {
+    try {
+        return Window.getCurrent();
+    } catch {
+        return null;
+    }
+})();
 
 export function TitleBar() {
-    // Safely attempt to get the current window (fails in browser context)
-    let appWindow: Window | null = null;
-    try {
-        appWindow = Window.getCurrent();
-    } catch {
-        // console.warn("Running in browser mode, Tauri window API not available.");
-    }
-
     const [isMaximized, setIsMaximized] = useState(false);
-    const { theme } = useApp();
 
     useEffect(() => {
         if (!appWindow) return;
-        
-        let unlisten: UnlistenFn | null = null;
-        const syncState = async () => setIsMaximized(await appWindow!.isMaximized());
-        syncState();
-
-        (async () => {
-            unlisten = await appWindow!.listen("tauri://resize", syncState);
-        })();
-
-        return () => {
-            if (unlisten) {
-                unlisten();
+        let disposed = false;
+        let unlisten: UnlistenFn | undefined;
+        const syncState = async () => {
+            const maximized = await appWindow.isMaximized();
+            if (!disposed) {
+                setIsMaximized(maximized);
+                document.documentElement.dataset.maximized = String(maximized);
             }
         };
-    }, [appWindow]);
 
-    const minimize = async () => {
-        await appWindow?.minimize();
-    };
+        void syncState();
+        void appWindow.listen("tauri://resize", syncState).then((stop) => {
+            if (disposed) stop();
+            else unlisten = stop;
+        });
+        return () => {
+            disposed = true;
+            unlisten?.();
+            delete document.documentElement.dataset.maximized;
+        };
+    }, []);
 
     const toggleMaximize = async () => {
         if (!appWindow) return;
-        if (await appWindow.isMaximized()) {
-            appWindow.unmaximize();
-            setIsMaximized(false);
-        } else {
-            appWindow.maximize();
-            setIsMaximized(true);
-        }
+        if (await appWindow.isMaximized()) await appWindow.unmaximize();
+        else await appWindow.maximize();
+        setIsMaximized(await appWindow.isMaximized());
     };
 
-    const close = async () => {
-        await appWindow?.close();
-    };
-
-    const isDark = theme === "dark";
-    const backgroundClass = isDark ? "bg-[#1e1e1e] border-[#333]" : "bg-[#f3f4f6] border-[#d1d5db]";
-    const textClass = isDark ? "text-gray-300" : "text-gray-800";
-    const controlHover = isDark ? "hover:bg-[#333] text-gray-400 hover:text-white" : "hover:bg-[#e5e7eb] text-gray-500 hover:text-gray-900";
-
-    // If in browser (no appWindow), we can either hide the titlebar or show a simplified version.
-    // Showing a simplified version maintains layout consistency.
-    
     return (
         <div
             data-tauri-drag-region={!!appWindow}
-            className={`h-10 flex items-center justify-between px-3 select-none border-b ${backgroundClass}`}
-            onDoubleClick={toggleMaximize}
+            className="flex h-10 shrink-0 select-none items-center justify-between bg-card pl-3"
+            onDoubleClick={(event) => {
+                if (!(event.target as HTMLElement).closest("button")) void toggleMaximize();
+            }}
         >
-            {/* Left: Logo */}
-            <div className="flex items-center gap-3 h-full px-4">
-                {/* <div className="flex items-center justify-center">
-                    <img src="/lion-svgrepo-com.svg" alt="Logo" className="w-5 h-5 object-contain" />
-                </div> */}
+            <div className="pointer-events-none flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                <AppWindow className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+                <span>pro-manager</span>
             </div>
-
-            {/* Center: Title */}
-            <div className={`absolute left-1/2 -translate-x-1/2 text-sm font-bold pointer-events-none select-none ${textClass}`}>
-                Pro Manager
-            </div>
-
-            {/* Right: Window Controls (Only show if in Tauri) */}
-            <div className="flex items-center h-full">
-                {appWindow && (
-                    <>
-                        <button
-                            type="button"
-                            data-tauri-drag-region="false"
-                            onClick={minimize}
-                            className={`h-full w-10 flex items-center justify-center transition-colors ${controlHover}`}
-                        >
-                            <Minus className="w-4 h-4" />
-                        </button>
-                        <button
-                            type="button"
-                            data-tauri-drag-region="false"
-                            onClick={toggleMaximize}
-                            className={`h-full w-10 flex items-center justify-center transition-colors ${controlHover}`}
-                        >
-                            {isMaximized ? <Copy className="w-3 h-3" /> : <Square className="w-3 h-3" />}
-                        </button>
-                        <button
-                            type="button"
-                            data-tauri-drag-region="false"
-                            onClick={close}
-                            className={`h-full w-10 flex items-center justify-center text-gray-400 transition-colors ${isDark ? "hover:bg-red-500 hover:text-white" : "hover:bg-red-200 hover:text-red-700"}`}
-                        >
-                            <X className="w-4 h-4" />
-                        </button>
-                    </>
-                )}
-            </div>
+            {appWindow && (
+                <div className="flex h-full items-center">
+                    <button type="button" data-tauri-drag-region="false" onClick={() => void appWindow.minimize()} aria-label="Minimize window" className="icon-button h-full w-10 rounded-none"><Minus className="h-4 w-4" /></button>
+                    <button type="button" data-tauri-drag-region="false" onClick={() => void toggleMaximize()} aria-label={isMaximized ? "Restore window" : "Maximize window"} className="icon-button h-full w-10 rounded-none">
+                        {isMaximized ? <Copy className="h-3 w-3" /> : <Square className="h-3 w-3" />}
+                    </button>
+                    <button type="button" data-tauri-drag-region="false" onClick={() => void appWindow.close()} aria-label="Close window" className="icon-button h-full w-10 rounded-none hover:bg-destructive hover:text-destructive-foreground"><X className="h-4 w-4" /></button>
+                </div>
+            )}
         </div>
     );
 }

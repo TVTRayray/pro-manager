@@ -4,8 +4,8 @@ use uuid::Uuid;
 use crate::{
     error::{AppError, AppResult},
     models::{
-        ActivityStats, AppSettings, AppSettingsUpdate, Project, ProjectInput, WorkspaceInput,
-        WorkspaceRecord,
+        ActivityStats, AppSettings, AppSettingsUpdate, LaunchPresetInput, Project, ProjectInput,
+        WorkspaceInput, WorkspaceRecord,
     },
     project,
     state::AppState,
@@ -49,7 +49,10 @@ pub async fn rename_workspace(
 }
 
 #[tauri::command]
-pub async fn delete_workspace(state: State<'_, AppState>, workspace_id: Uuid) -> Result<(), AppError> {
+pub async fn delete_workspace(
+    state: State<'_, AppState>,
+    workspace_id: Uuid,
+) -> Result<(), AppError> {
     state.delete_workspace(workspace_id).await
 }
 
@@ -79,7 +82,24 @@ pub async fn delete_project(
     project_id: Uuid,
 ) -> AppResult<Uuid> {
     let handle = state.workspace_handle(workspace_id).await?;
+    state.inner.write().await.stop_process(project_id)?;
     project::delete_project(&handle, project_id).await
+}
+
+#[tauri::command]
+pub async fn set_project_favourite(
+    state: State<'_, AppState>,
+    workspace_id: Option<Uuid>,
+    project_id: Uuid,
+    is_favourite: bool,
+) -> AppResult<Project> {
+    let handle = state.workspace_handle(workspace_id).await?;
+    project::set_project_favourite(&handle, project_id, is_favourite).await
+}
+
+#[tauri::command]
+pub fn detect_editor_presets() -> Vec<LaunchPresetInput> {
+    crate::editors::detect_editor_presets()
 }
 
 #[tauri::command]
@@ -90,46 +110,40 @@ pub async fn launch_project(
 ) -> AppResult<()> {
     let handle = state.workspace_handle(workspace_id).await?;
     let project = project::get_project(&handle, project_id).await?;
-    
-    // Check if already running
-    {
-        let mut inner = state.inner.write().await;
-        if let Some(child) = inner.running_processes.get_mut(&project_id) {
-            match child.try_wait() {
-                Ok(Some(_)) => {
-                    // Process finished, remove it
-                    inner.running_processes.remove(&project_id);
-                }
-                Ok(None) => {
-                    // Still running
-                    return Ok(());
-                }
-                Err(_) => {
-                    inner.running_processes.remove(&project_id);
-                }
+
+    let mut inner = state.inner.write().await;
+    // ponytail: one global launch lock serializes starts; split it per project if launch throughput matters.
+    if let Some(process) = inner.running_processes.get_mut(&project_id) {
+        match process.child.try_wait() {
+            Ok(Some(_)) => {
+                inner.running_processes.remove(&project_id);
+            }
+            Ok(None) => return Ok(()),
+            Err(error) => {
+                return Err(AppError::Launch(format!(
+                    "failed to check project process: {error}"
+                )))
             }
         }
     }
 
     if let Some(child) = project::launch_project(&handle, &project).await? {
-        let mut inner = state.inner.write().await;
-        inner.running_processes.insert(project_id, child);
+        inner.running_processes.insert(
+            project_id,
+            crate::state::RunningProcess {
+                workspace_id: handle.id,
+                child,
+            },
+        );
     }
-    
+
     Ok(())
 }
 
 #[tauri::command]
-pub async fn stop_project(
-    state: State<'_, AppState>,
-    project_id: Uuid,
-) -> AppResult<()> {
+pub async fn stop_project(state: State<'_, AppState>, project_id: Uuid) -> AppResult<()> {
     let mut inner = state.inner.write().await;
-    if let Some(child) = inner.running_processes.get_mut(&project_id) {
-        project::stop_project(child)?;
-        inner.running_processes.remove(&project_id);
-    }
-    Ok(())
+    inner.stop_process(project_id)
 }
 
 #[tauri::command]
@@ -138,16 +152,18 @@ pub async fn get_running_projects(state: State<'_, AppState>) -> Result<Vec<Uuid
     let mut running = Vec::new();
     let mut to_remove = Vec::new();
 
-    for (id, child) in inner.running_processes.iter_mut() {
-        match child.try_wait() {
+    for (id, process) in inner.running_processes.iter_mut() {
+        match process.child.try_wait() {
             Ok(Some(_)) => {
                 to_remove.push(*id);
             }
             Ok(None) => {
                 running.push(*id);
             }
-            Err(_) => {
-                to_remove.push(*id);
+            Err(error) => {
+                return Err(AppError::Launch(format!(
+                    "failed to check project process {id}: {error}"
+                )))
             }
         }
     }

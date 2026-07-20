@@ -6,13 +6,13 @@ import { Settings } from "./pages/Settings";
 import { AppProvider, useApp } from "./context/AppContext";
 
 function AppContent() {
-  const { activePage, setActivePage } = useApp();
+  const { activePage } = useApp();
 
   return (
-    <MainLayout activePage={activePage} onNavigate={setActivePage}>
+    <MainLayout activePage={activePage}>
       {activePage === "projects" && <Projects />}
       {activePage === "dashboards" && <Dashboards />}
-      {activePage === "favourites" && <div className="p-8 text-white">Favourites (Coming Soon)</div>}
+      {activePage === "favourites" && <Projects favouritesOnly />}
       {activePage === "settings" && <Settings />}
     </MainLayout>
   );

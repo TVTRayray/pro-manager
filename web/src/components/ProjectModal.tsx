@@ -1,10 +1,9 @@
-import { useState, useEffect } from "react";
+import { useRef, useState, useEffect } from "react";
 import { X, FolderOpen, Terminal } from "lucide-react";
 import type { ProjectInput, OpenConfig } from "../types";
 import { open } from '@tauri-apps/plugin-dialog';
 import { cn } from "../lib/utils";
 import { useApp } from "../context/AppContext";
-import { CustomSelect } from "./CustomSelect";
 
 interface ProjectModalProps {
     isOpen: boolean;
@@ -23,9 +22,14 @@ export function ProjectModal({ isOpen, onClose, onSubmit, initialData }: Project
     const [args, setArgs] = useState("");
     const [command, setCommand] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [error, setError] = useState("");
+    const dialogRef = useRef<HTMLDivElement>(null);
+    const firstControlRef = useRef<HTMLInputElement>(null);
+    const previousFocusRef = useRef<HTMLElement | null>(null);
 
     useEffect(() => {
         if (initialData) {
+            setError("");
             setName(initialData.name);
             setPath(initialData.path);
             setDescription(initialData.description || "");
@@ -42,6 +46,16 @@ export function ProjectModal({ isOpen, onClose, onSubmit, initialData }: Project
         }
     }, [initialData, isOpen]);
 
+    useEffect(() => {
+        if (!isOpen) return;
+        previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        const frame = requestAnimationFrame(() => firstControlRef.current?.focus());
+        return () => {
+            cancelAnimationFrame(frame);
+            previousFocusRef.current?.focus();
+        };
+    }, [isOpen]);
+
     const resetForm = () => {
         setName("");
         setPath("");
@@ -50,6 +64,7 @@ export function ProjectModal({ isOpen, onClose, onSubmit, initialData }: Project
         setExecutable("");
         setArgs("");
         setCommand("");
+        setError("");
     };
 
     const handleBrowse = async () => {
@@ -68,12 +83,14 @@ export function ProjectModal({ isOpen, onClose, onSubmit, initialData }: Project
             }
         } catch (err) {
             console.error("Failed to open dialog", err);
+            setError(`Could not open folder picker: ${String(err)}`);
         }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
+        setError("");
 
         try {
             let openConfig: OpenConfig;
@@ -103,58 +120,90 @@ export function ProjectModal({ isOpen, onClose, onSubmit, initialData }: Project
             onClose();
         } catch (error) {
             console.error("Failed to submit project:", error);
+            setError(`Could not save project: ${String(error)}`);
         } finally {
             setIsSubmitting(false);
+        }
+    };
+
+    const handleDialogKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+        if (event.key === "Escape" && !isSubmitting) {
+            event.preventDefault();
+            onClose();
+            return;
+        }
+        if (event.key !== "Tab" || !dialogRef.current) return;
+
+        const controls = [...dialogRef.current.querySelectorAll<HTMLElement>("button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex='-1'])")];
+        const first = controls[0];
+        const last = controls[controls.length - 1];
+        if (!first || !last) return;
+        if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
         }
     };
 
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="w-full max-w-lg bg-card border border-border rounded-xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/25 p-3">
+            <div ref={dialogRef} onKeyDown={handleDialogKeyDown} role="dialog" aria-modal="true" aria-labelledby="project-dialog-title" className="flex max-h-[calc(100vh-1.5rem)] w-full max-w-lg flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xl">
                 <div className="flex items-center justify-between p-4 border-b border-border">
-                    <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+                    <h2 id="project-dialog-title" className="flex items-center gap-2 text-base font-semibold text-foreground">
                         <Terminal className="w-5 h-5 text-primary" />
                         {initialData ? "Edit Project" : "New Project"}
                     </h2>
-                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
+                    <button onClick={onClose} disabled={isSubmitting} aria-label="Close project dialog" className="icon-button">
                         <X className="w-5 h-5" />
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-4 space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-4 overflow-y-auto p-4">
+                    {error && <div role="alert" className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">{error}</div>}
                     <div className="space-y-1">
-                        <label className="text-xs font-medium text-muted-foreground">Project Name</label>
+                        <label htmlFor="project-name" className="text-xs font-medium text-muted-foreground">Project Name</label>
                         <input
+                            id="project-name"
+                            ref={firstControlRef}
                             required
                             type="text"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            className="w-full bg-background border border-input rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary transition-colors"
+                            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground"
                             placeholder="My Awesome Project"
                         />
                     </div>
 
                     <div className="space-y-1">
-                        <label className="text-xs font-medium text-muted-foreground">Path</label>
+                        <label htmlFor="project-path" className="text-xs font-medium text-muted-foreground">Path</label>
                         <div className="flex gap-2">
                             <input
+                                id="project-path"
                                 required
                                 type="text"
                                 value={path}
                                 onChange={(e) => setPath(e.target.value)}
-                                className="flex-1 bg-background border border-input rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary transition-colors"
+                                className="flex-1 rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground"
                                 placeholder="/path/to/project"
                             />
                             <button
                                 type="button"
                                 onClick={handleBrowse}
+                                aria-label="Browse for project folder"
                                 className="px-3 py-2 bg-accent hover:bg-accent/80 border border-input rounded-lg text-muted-foreground hover:text-foreground transition-colors"
                             >
                                 <FolderOpen className="w-4 h-4" />
                             </button>
                         </div>
+                    </div>
+
+                    <div className="space-y-1">
+                        <label htmlFor="project-description" className="text-xs font-medium text-muted-foreground">Description (Optional)</label>
+                        <textarea id="project-description" value={description} onChange={(event) => setDescription(event.target.value)} rows={2} className="w-full resize-none rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground" placeholder="A short note about this project" />
                     </div>
 
                     <div className="space-y-3 pt-2 border-t border-border">
@@ -165,6 +214,7 @@ export function ProjectModal({ isOpen, onClose, onSubmit, initialData }: Project
                                     key={mode}
                                     type="button"
                                     onClick={() => setConfigMode(mode)}
+                                    aria-pressed={configMode === mode}
                                     className={cn(
                                         "px-2 py-1.5 text-xs font-medium rounded-md border transition-all",
                                         configMode === mode
@@ -178,14 +228,15 @@ export function ProjectModal({ isOpen, onClose, onSubmit, initialData }: Project
                         </div>
 
                         {configMode === 'custom_app' && (
-                            <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                            <div className="space-y-2">
                                 {launchPresets.length > 0 && (
                                     <div className="relative flex gap-2 w-full">
                                         <div className="flex-1">
-                                            <CustomSelect
-                                                options={launchPresets.map(p => ({ label: p.name, value: p.id }))}
+                                            <select
+                                                aria-label="Load launch preset"
                                                 value=""
-                                                onChange={(val) => {
+                                                onChange={(event) => {
+                                                    const val = event.target.value;
                                                     const preset = launchPresets.find(p => p.id === val);
                                                     if (preset) {
                                                         setConfigMode(preset.config.mode);
@@ -198,8 +249,11 @@ export function ProjectModal({ isOpen, onClose, onSubmit, initialData }: Project
                                                         }
                                                     }
                                                 }}
-                                                placeholder="Load Preset..."
-                                            />
+                                                className="h-[34px] w-full rounded-md border border-input bg-background px-2 text-xs text-foreground"
+                                            >
+                                                <option value="">Load preset...</option>
+                                                {launchPresets.map((preset) => <option key={preset.id} value={preset.id}>{preset.name}</option>)}
+                                            </select>
                                         </div>
                                         <button
                                             type="button"
@@ -219,27 +273,27 @@ export function ProjectModal({ isOpen, onClose, onSubmit, initialData }: Project
                                     type="text"
                                     value={executable}
                                     onChange={(e) => setExecutable(e.target.value)}
-                                    className="w-full bg-background border border-input rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary transition-colors"
+                                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground"
                                     placeholder="Executable (e.g., code, idea64.exe)"
                                 />
                                 <input
                                     type="text"
                                     value={args}
                                     onChange={(e) => setArgs(e.target.value)}
-                                    className="w-full bg-background border border-input rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary transition-colors"
+                                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground"
                                     placeholder="Arguments (space separated)"
                                 />
                             </div>
                         )}
 
                         {configMode === 'custom_command' && (
-                            <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                            <div className="space-y-2">
                                 <input
                                     required
                                     type="text"
                                     value={command}
                                     onChange={(e) => setCommand(e.target.value)}
-                                    className="w-full bg-background border border-input rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary transition-colors"
+                                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground"
                                     placeholder="Command (e.g., npm run dev)"
                                 />
                             </div>
@@ -250,6 +304,7 @@ export function ProjectModal({ isOpen, onClose, onSubmit, initialData }: Project
                         <button
                             type="button"
                             onClick={onClose}
+                            disabled={isSubmitting}
                             className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
                         >
                             Cancel

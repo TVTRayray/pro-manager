@@ -1,11 +1,12 @@
 use std::{
     collections::HashMap,
-    fs,
+    fs::{self, OpenOptions},
+    io::Write,
     path::{Path, PathBuf},
     sync::Arc,
 };
 
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use sqlx::{
     sqlite::{SqliteConnectOptions, SqlitePoolOptions},
@@ -17,10 +18,7 @@ use uuid::Uuid;
 use crate::{
     db::{apply_default_pragmas, init_workspace_schema},
     error::{AppError, AppResult},
-    models::{
-        AppSettings, AppSettingsUpdate, LaunchPreset, LaunchPresetInput, ThemePreference,
-        WorkspaceInput, WorkspaceRecord,
-    },
+    models::{AppSettings, AppSettingsUpdate, LaunchPreset, WorkspaceInput, WorkspaceRecord},
     project,
 };
 
@@ -37,7 +35,13 @@ pub struct AppStateInner {
     config_path: PathBuf,
     config: AppConfig,
     workspace_pools: HashMap<Uuid, SqlitePool>,
-    pub running_processes: HashMap<Uuid, std::process::Child>,
+    pub running_processes: HashMap<Uuid, RunningProcess>,
+}
+
+#[derive(Debug)]
+pub struct RunningProcess {
+    pub workspace_id: Uuid,
+    pub child: std::process::Child,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -141,14 +145,15 @@ impl AppState {
     }
 
     pub async fn rename_workspace(&self, id: Uuid, new_name: String) -> AppResult<WorkspaceRecord> {
-        if new_name.trim().is_empty() {
+        let new_name = new_name.trim().to_string();
+        if new_name.is_empty() {
             return Err(AppError::Validation(
                 "workspace name cannot be empty".to_string(),
             ));
         }
 
         let mut inner = self.inner.write().await;
-        
+
         // Check for duplicate names (excluding self)
         if inner
             .config
@@ -169,14 +174,14 @@ impl AppState {
                 .iter_mut()
                 .find(|ws| ws.id == id)
                 .ok_or_else(|| AppError::WorkspaceNotFound(id.to_string()))?;
-            
-            workspace.name = new_name.clone();
+
+            workspace.name = new_name;
             workspace.updated_at = Utc::now();
             workspace.clone()
         };
-        
+
         inner.persist_config()?;
-        
+
         Ok(updated_record)
     }
 
@@ -192,6 +197,15 @@ impl AppState {
         // Check if exists
         if !inner.config.workspaces.iter().any(|ws| ws.id == id) {
             return Err(AppError::WorkspaceNotFound(id.to_string()));
+        }
+
+        let project_ids = inner
+            .running_processes
+            .iter()
+            .filter_map(|(project_id, process)| (process.workspace_id == id).then_some(*project_id))
+            .collect::<Vec<_>>();
+        for project_id in project_ids {
+            inner.stop_process(project_id)?;
         }
 
         // If deleting active workspace, switch to another one first
@@ -213,7 +227,7 @@ impl AppState {
 
         // Remove pool
         if let Some(pool) = inner.workspace_pools.remove(&id) {
-             pool.close().await;
+            pool.close().await;
         }
 
         // Persist config first
@@ -231,8 +245,12 @@ impl AppState {
         Ok(())
     }
 
-    pub async fn create_workspace(&self, payload: WorkspaceInput) -> AppResult<WorkspaceRecord> {
-        if payload.name.trim().is_empty() {
+    pub async fn create_workspace(
+        &self,
+        mut payload: WorkspaceInput,
+    ) -> AppResult<WorkspaceRecord> {
+        payload.name = payload.name.trim().to_string();
+        if payload.name.is_empty() {
             return Err(AppError::Validation(
                 "workspace name cannot be empty".to_string(),
             ));
@@ -300,18 +318,13 @@ impl AppState {
                 .ok_or_else(|| AppError::Validation("no active workspace selected".into()))?,
         };
 
-        let meta = inner
-            .config
-            .find_workspace(id)
-            .ok_or_else(|| AppError::WorkspaceNotFound(id.to_string()))?
-            .clone();
         let pool = inner
             .workspace_pools
             .get(&id)
             .cloned()
             .ok_or_else(|| AppError::WorkspaceNotFound(id.to_string()))?;
 
-        Ok(WorkspaceHandle { meta, pool })
+        Ok(WorkspaceHandle { id, pool })
     }
 
     pub async fn get_settings(&self) -> AppSettings {
@@ -380,11 +393,23 @@ impl AppState {
         let inner = self.inner.read().await;
         inner.persist_config()
     }
+
+    pub async fn stop_all_processes(&self) -> AppResult<()> {
+        let mut inner = self.inner.write().await;
+        let mut first_error = None;
+        let project_ids = inner.running_processes.keys().copied().collect::<Vec<_>>();
+        for project_id in project_ids {
+            if let Err(error) = inner.stop_process(project_id) {
+                first_error.get_or_insert(error);
+            }
+        }
+        first_error.map_or(Ok(()), Err)
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct WorkspaceHandle {
-    pub meta: WorkspaceRecord,
+    pub id: Uuid,
     pub pool: SqlitePool,
 }
 
@@ -470,6 +495,14 @@ impl AppConfig {
 }
 
 impl AppStateInner {
+    pub fn stop_process(&mut self, project_id: Uuid) -> AppResult<()> {
+        if let Some(process) = self.running_processes.get_mut(&project_id) {
+            project::stop_project(&mut process.child)?;
+        }
+        self.running_processes.remove(&project_id);
+        Ok(())
+    }
+
     fn persist_config(&self) -> AppResult<()> {
         if let Some(parent) = self.config_path.parent() {
             if !parent.exists() {
@@ -477,7 +510,16 @@ impl AppStateInner {
             }
         }
         let payload = serde_json::to_string_pretty(&self.config)?;
-        fs::write(&self.config_path, payload)?;
+        let temp_path = self.config_path.with_extension("json.tmp");
+        let mut temp = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(&temp_path)?;
+        temp.write_all(payload.as_bytes())?;
+        temp.sync_all()?;
+        drop(temp);
+        fs::rename(temp_path, &self.config_path)?;
         Ok(())
     }
 
@@ -486,5 +528,101 @@ impl AppStateInner {
             .join("workspaces")
             .join(id.to_string())
             .join("projects.sqlite")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    #[cfg(unix)]
+    async fn trims_workspace_names_and_replaces_config_atomically() {
+        let root = std::env::temp_dir().join(format!("pro-manager-state-{}", Uuid::new_v4()));
+        let state = AppState::initialise(root.clone()).await.unwrap();
+        let id = state.list_workspaces().await[0].id;
+
+        let workspace = state
+            .rename_workspace(id, "  Renamed  ".into())
+            .await
+            .unwrap();
+
+        assert_eq!(workspace.name, "Renamed");
+        assert!(fs::read_to_string(root.join(CONFIG_FILENAME))
+            .unwrap()
+            .contains("Renamed"));
+        assert!(!root.join("workspaces.json.tmp").exists());
+
+        let pools = {
+            let mut inner = state.inner.write().await;
+            inner
+                .workspace_pools
+                .drain()
+                .map(|(_, pool)| pool)
+                .collect::<Vec<_>>()
+        };
+        for pool in pools {
+            pool.close().await;
+        }
+        drop(state);
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[tokio::test]
+    #[cfg(unix)]
+    async fn deleting_workspace_reaps_its_tracked_processes() {
+        use std::{os::unix::process::CommandExt, process::Command};
+
+        let root = std::env::temp_dir().join(format!("pro-manager-delete-{}", Uuid::new_v4()));
+        let state = AppState::initialise(root.clone()).await.unwrap();
+        let workspace_id = state.list_workspaces().await[0].id;
+        state
+            .create_workspace(WorkspaceInput {
+                name: "Keep".into(),
+                description: None,
+                database_path: None,
+            })
+            .await
+            .unwrap();
+
+        let mut command = Command::new("sh");
+        command.arg("-c").arg("sleep 30").process_group(0);
+        let child = command.spawn().unwrap();
+        let pid = child.id() as i32;
+        let project_id = Uuid::new_v4();
+        state.inner.write().await.running_processes.insert(
+            project_id,
+            RunningProcess {
+                workspace_id,
+                child,
+            },
+        );
+
+        state.delete_workspace(workspace_id).await.unwrap();
+
+        let inner = state.inner.read().await;
+        assert!(!inner.running_processes.contains_key(&project_id));
+        assert!(!inner
+            .config
+            .workspaces
+            .iter()
+            .any(|ws| ws.id == workspace_id));
+        // SAFETY: signal 0 only checks whether the reaped child pid still exists.
+        assert_eq!(unsafe { libc::kill(pid, 0) }, -1);
+        drop(inner);
+
+        let pools = {
+            let mut inner = state.inner.write().await;
+            inner
+                .workspace_pools
+                .drain()
+                .map(|(_, pool)| pool)
+                .collect::<Vec<_>>()
+        };
+        for pool in pools {
+            pool.close().await;
+        }
+        drop(state);
+        fs::remove_dir_all(root).unwrap();
     }
 }

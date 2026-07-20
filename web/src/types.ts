@@ -36,6 +36,7 @@ export interface Project {
   path: string
   description?: string | null
   openConfig: OpenConfig
+  isFavourite: boolean
   createdAt: string
   updatedAt: string
 }
@@ -47,6 +48,8 @@ export interface ProjectInput {
   description?: string | null
   openConfig: OpenConfig
 }
+
+export type AppPage = 'projects' | 'dashboards' | 'favourites' | 'settings'
 
 export type ThemePreference = 'light' | 'dark' | 'system'
 
